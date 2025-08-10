@@ -50,12 +50,12 @@ Now I have:
 ![](./addTask.png)
 ![](./editTask.png)
 
-## Step 3: Draging and Moving (30 min)
+## Step 3: Draging and Moving (40 min)
 
 Interactive Features
 ---------------------
 
-Drag & Drop: Reorder within a column and move tasks between To Do / Doing / Review / Done via `@hello-pangea/dnd`. Status updates on drop.
+Drag & Drop: Reorder within a column and move tasks between To Do / Doing / Review / Done via `@hello-pangea/dnd`. Status updates on drop. I tried to make the dragging process as smooth as possible.
 
 Per-Task Timer: When a card is in Doing, its timer auto-starts; moving it out of Doing auto-pauses. The timer stays visible and accumulates time.
 

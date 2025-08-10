@@ -113,3 +113,30 @@ button:hover { opacity: 0.9; }
 .row { display:flex; gap: 10px; }
 .grow { flex: 1; }
 .actions { display:flex; justify-content:flex-end; gap: 8px; margin-top: 8px; }
+
+.toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  width: 100%;
+  margin-top: 6px;
+}
+
+.sort-control select {
+  margin-left: 6px;
+  background: #0b1220;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+
+.note {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.spacer {
+  flex: 1;
+}

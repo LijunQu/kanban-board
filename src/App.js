@@ -1,10 +1,19 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import "./App.css";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import confetti from "canvas-confetti";
-import { createPortal } from "react-dom";
 
 const STATUSES = ["To Do", "Doing", "Review", "Done"];
+
+const SORT_OPTIONS = [
+  { key: "manual", label: "Manual (drag order)" },
+  { key: "title", label: "Title (A→Z)" },
+  { key: "due", label: "Due date" },
+  { key: "priority", label: "Priority" },
+  { key: "assignee", label: "Assignee (A→Z)" },
+  { key: "elapsed", label: "Time spent" },
+];
 
 const makeInitialColumns = () => {
   const cols = {};
@@ -15,11 +24,14 @@ const makeInitialColumns = () => {
   return cols;
 };
 
-// deep clone helper
+// deep clone helper (fallback for older browsers)
 const clone = (obj) =>
   typeof structuredClone === "function"
     ? structuredClone(obj)
     : JSON.parse(JSON.stringify(obj));
+
+// normalize droppable ids if you ever add suffixes
+const baseCol = (id) => String(id).split(":")[0];
 
 // format ms -> HH:MM:SS
 function fmt(ms = 0) {
@@ -29,6 +41,64 @@ function fmt(ms = 0) {
   const s = String(sec % 60).padStart(2, "0");
   return `${h}:${m}:${s}`;
 }
+
+// priority rank (higher = more important)
+const prRank = (p) => ({ High: 3, Medium: 2, Low: 1 }[p] || 0);
+
+// compute total elapsed (including live)
+const totalElapsed = (t) =>
+  (t.elapsedMs || 0) + (t.isRunning && t.startedAt ? Date.now() - t.startedAt : 0);
+
+// build a comparator based on sortKey/direction
+const makeComparator = (sortKey, dir) => {
+  const mul = dir === "desc" ? -1 : 1;
+  return (a, b) => {
+    let va, vb;
+
+    switch (sortKey) {
+      case "title":
+        va = (a.title || "").toLowerCase();
+        vb = (b.title || "").toLowerCase();
+        if (va !== vb) return mul * va.localeCompare(vb);
+        break;
+
+      case "due": {
+        const da = a.dueDate ? new Date(a.dueDate).getTime() : Number.POSITIVE_INFINITY;
+        const db = b.dueDate ? new Date(b.dueDate).getTime() : Number.POSITIVE_INFINITY;
+        if (da !== db) return mul * (da - db);
+        break;
+      }
+
+      case "priority": {
+        const ra = prRank(a.priority);
+        const rb = prRank(b.priority);
+        if (ra !== rb) return mul * (ra - rb);
+        break;
+      }
+
+      case "assignee": {
+        va = (a.assignee || "\uffff").toLowerCase(); // empty last
+        vb = (b.assignee || "\uffff").toLowerCase();
+        if (va !== vb) return mul * va.localeCompare(vb);
+        break;
+      }
+
+      case "elapsed": {
+        const ea = totalElapsed(a);
+        const eb = totalElapsed(b);
+        if (ea !== eb) return mul * (ea - eb);
+        break;
+      }
+
+      default:
+        // "manual" -> no sorting
+        return 0;
+    }
+
+    // deterministic tie-breaker by id
+    return (a.id > b.id ? 1 : -1) * mul;
+  };
+};
 
 export default function App() {
   const [columns, setColumns] = useState(makeInitialColumns());
@@ -44,63 +114,55 @@ export default function App() {
     status: "To Do",
   });
 
-  // tick for timers
+  // sorting state
+  const [sortKey, setSortKey] = useState("manual");
+  const [sortDir, setSortDir] = useState("asc"); // "asc" | "desc"
+  const comparator = makeComparator(sortKey, sortDir);
+
+  // global tick: re-render timers once per second (keeps "elapsed" sort fresh)
   const [, setNow] = useState(Date.now());
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
 
-  // celebration trigger (increment to fire)
-  const [celebrateCount, setCelebrateCount] = useState(0);
-  const lastFireRef = useRef(0);
-
-  // Audio
+  // Audio setup + unlock
   const audioCtxRef = useRef(null);
+  const [soundReady, setSoundReady] = useState(false);
   useEffect(() => {
     try {
       const Ctx = window.AudioContext || window.webkitAudioContext;
       audioCtxRef.current = new Ctx();
     } catch {}
   }, []);
-
-  const playCoin = () => {
+  const enableSound = () => {
     const ctx = audioCtxRef.current;
     if (!ctx) return;
-    if (ctx.state === "suspended") ctx.resume();
-
+    ctx.resume?.();
+    setSoundReady(true);
+  };
+  const playCoin = () => {
+    const ctx = audioCtxRef.current;
+    if (!ctx || ctx.state === "suspended") return; // need unlock
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = "square";
     osc.connect(gain);
     gain.connect(ctx.destination);
-
     const now = ctx.currentTime;
     osc.frequency.setValueAtTime(880, now);
     osc.frequency.exponentialRampToValueAtTime(1760, now + 0.08);
     gain.gain.setValueAtTime(0.0001, now);
     gain.gain.exponentialRampToValueAtTime(0.35, now + 0.01);
     gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
-
     osc.start(now);
     osc.stop(now + 0.3);
   };
-
   const fireConfetti = () => {
     const opts = { origin: { y: 0.7 }, spread: 70, startVelocity: 55, ticks: 90 };
     confetti({ ...opts, particleCount: 60 });
     setTimeout(() => confetti({ ...opts, particleCount: 80 }), 120);
   };
-
-  // fire celebration when counter changes (debounced to avoid double in StrictMode)
-  useEffect(() => {
-    if (celebrateCount <= 0) return;
-    const now = Date.now();
-    if (now - lastFireRef.current < 150) return;
-    lastFireRef.current = now;
-    fireConfetti();
-    playCoin();
-  }, [celebrateCount]);
 
   const openAddForm = () => {
     setEditingId(null);
@@ -135,7 +197,6 @@ export default function App() {
     }
     return { ...t, isRunning: false, startedAt: null, elapsedMs: t.elapsedMs || 0 };
   };
-
   const startTimer = (t) => ({
     ...t,
     isRunning: true,
@@ -166,13 +227,17 @@ export default function App() {
         next[form.status].push(task);
 
         if (form.status === "Done" && oldStatus !== "Done") {
-          setCelebrateCount((c) => c + 1);
+          fireConfetti();
+          playCoin();
         }
       } else {
         let newTask = { ...form, id: Date.now() };
         if (newTask.status === "Doing") newTask = startTimer(newTask);
         next[newTask.status].push(newTask);
-        if (newTask.status === "Done") setCelebrateCount((c) => c + 1);
+        if (newTask.status === "Done") {
+          fireConfetti();
+          playCoin();
+        }
       }
       return next;
     });
@@ -197,8 +262,8 @@ export default function App() {
     const { destination, source, draggableId } = result;
     if (!destination) return;
 
-    const fromCol = source.droppableId;
-    const toCol = destination.droppableId;
+    const fromCol = baseCol(source.droppableId);
+    const toCol = baseCol(destination.droppableId);
 
     let enteredDone = false;
 
@@ -209,21 +274,41 @@ export default function App() {
       const idx = fromList.findIndex((t) => String(t.id) === draggableId);
       let task = fromList[idx];
 
+      // remove from source
       fromList.splice(idx, 1);
 
-      if (fromCol !== toCol) {
-        if (fromCol === "Doing") task = stopTimer(task);
-        if (toCol === "Doing") task = startTimer(task);
-        task.status = toCol;
-        if (toCol === "Done") enteredDone = true;
+      // move within same column
+      if (fromCol === toCol) {
+        if (sortKey === "manual") {
+          // manual reorder allowed
+          next[toCol].splice(destination.index, 0, task);
+        } else {
+          // when sorted, ignore manual indices; just put back and let sorting control the view
+          next[toCol].push(task);
+        }
+        return next;
       }
 
-      next[toCol].splice(destination.index, 0, task);
+      // across columns
+      if (fromCol === "Doing") task = stopTimer(task);
+      if (toCol === "Doing") task = startTimer(task);
+      task.status = toCol;
+
+      if (sortKey === "manual") {
+        next[toCol].splice(destination.index, 0, task);
+      } else {
+        next[toCol].push(task);
+      }
+
+      if (toCol === "Done") enteredDone = true;
+
       return next;
     });
 
+    // fire immediately (still part of the gesture)
     if (enteredDone && fromCol !== "Done") {
-      setCelebrateCount((c) => c + 1);
+      fireConfetti();
+      playCoin();
     }
   };
 
@@ -231,9 +316,34 @@ export default function App() {
     <div className="app">
       <header className="app-header">
         <h1>Kanban</h1>
-        <button className="primary" onClick={openAddForm}>
-          Add Task
-        </button>
+        <div className="toolbar">
+          <label className="sort-control">
+            Sort by:
+            <select
+              value={sortKey}
+              onChange={(e) => setSortKey(e.target.value)}
+            >
+              {SORT_OPTIONS.map((o) => (
+                <option key={o.key} value={o.key}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button onClick={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))}>
+            {sortDir === "asc" ? "↑ Asc" : "↓ Desc"}
+          </button>
+          {sortKey !== "manual" && (
+            <span className="note">Tip: manual reordering is disabled while sorted.</span>
+          )}
+          <div className="spacer" />
+          <button onClick={enableSound} title="Enable sound">
+            {soundReady ? "🔊 Sound on" : "🔇 Enable sound"}
+          </button>
+          <button className="primary" onClick={openAddForm}>
+            Add Task
+          </button>
+        </div>
       </header>
 
       <DragDropContext onDragEnd={onDragEnd}>
@@ -243,44 +353,82 @@ export default function App() {
               <header className="column-header">{col}</header>
 
               <Droppable droppableId={col}>
-                {(provided) => (
+                {(provided, snapshot) => (
                   <div
-                    className="column-body"
+                    className={`column-body ${
+                      snapshot.isDraggingOver ? "is-over" : ""
+                    }`}
                     ref={provided.innerRef}
                     {...provided.droppableProps}
                   >
-                    {columns[col].map((t, index) => (
-                      <Draggable draggableId={String(t.id)} index={index} key={t.id}>
-                        {(dragProvided, snapshot) => {
+                    {(sortKey === "manual"
+                      ? columns[col]
+                      : [...columns[col]].sort(comparator)
+                    ).map((t, index) => (
+                      <Draggable
+                        draggableId={String(t.id)}
+                        index={index}
+                        key={t.id}
+                        isDragDisabled={sortKey !== "manual"} // disable reordering when sorted
+                      >
+                        {(dragProvided, dragSnapshot) => {
                           const card = (
                             <article
-                              className={`card ${t.status === "Done" ? "done" : ""} ${snapshot.isDragging ? "dragging" : ""}`}
+                              className={`card ${
+                                t.status === "Done" ? "done" : ""
+                              } ${dragSnapshot.isDragging ? "dragging" : ""}`}
                               ref={dragProvided.innerRef}
                               {...dragProvided.draggableProps}
-                              {...dragProvided.dragHandleProps}
+                              {...(sortKey === "manual"
+                                ? dragProvided.dragHandleProps
+                                : dragProvided.draggableProps)}
                               onClick={() => openEditForm(t)}
                               style={{
                                 ...dragProvided.draggableProps.style,
-                                cursor: "grab",
-                                boxShadow: snapshot.isDragging ? "0 12px 30px rgba(0,0,0,0.45)" : "none",
+                                cursor: sortKey === "manual" ? "grab" : "default",
+                                boxShadow: dragSnapshot.isDragging
+                                  ? "0 12px 30px rgba(0,0,0,0.45)"
+                                  : "none",
                               }}
                             >
                               <div className="card-title">{t.title}</div>
                               <div className="meta">
-                                <span className={`pill ${t.priority?.toLowerCase() || "medium"}`}>
+                                <span
+                                  className={`pill ${
+                                    t.priority?.toLowerCase() || "medium"
+                                  }`}
+                                >
                                   {t.priority || "Medium"}
                                 </span>
-                                {t.assignee && <span className="assignee">{t.assignee}</span>}
-                                {t.dueDate && <span className="due">Due {t.dueDate}</span>}
-                                <span className={`timer ${t.isRunning ? "" : "paused"}`}>
-                                  ⏱ {fmt((t.elapsedMs || 0) + (t.isRunning && t.startedAt ? Date.now() - t.startedAt : 0))}
+                                {t.assignee && (
+                                  <span className="assignee">{t.assignee}</span>
+                                )}
+                                {t.dueDate && (
+                                  <span className="due">Due {t.dueDate}</span>
+                                )}
+                                <span
+                                  className={`timer ${
+                                    t.isRunning ? "" : "paused"
+                                  }`}
+                                >
+                                  ⏱{" "}
+                                  {fmt(
+                                    (t.elapsedMs || 0) +
+                                      (t.isRunning && t.startedAt
+                                        ? Date.now() - t.startedAt
+                                        : 0)
+                                  )}
                                 </span>
                               </div>
-                              {t.description && <div className="desc">{t.description}</div>}
+                              {t.description && (
+                                <div className="desc">{t.description}</div>
+                              )}
                             </article>
                           );
-                          // render dragged item to <body> so it never gets clipped
-                          return snapshot.isDragging ? createPortal(card, document.body) : card;
+                          // Render dragged item to <body> so it never gets clipped
+                          return dragSnapshot.isDragging
+                            ? createPortal(card, document.body)
+                            : card;
                         }}
                       </Draggable>
                     ))}
@@ -293,8 +441,6 @@ export default function App() {
         </div>
       </DragDropContext>
 
-
-
       {/* Modal */}
       {showForm && (
         <div className="modal-backdrop" onClick={() => setShowForm(false)}>
@@ -305,7 +451,9 @@ export default function App() {
                 Title
                 <input
                   value={form.title}
-                  onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, title: e.target.value })
+                  }
                   placeholder="Short title"
                   required
                 />
@@ -314,7 +462,9 @@ export default function App() {
                 Description
                 <textarea
                   value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, description: e.target.value })
+                  }
                   placeholder="Details (optional)"
                 />
               </label>
@@ -323,7 +473,9 @@ export default function App() {
                   Priority
                   <select
                     value={form.priority}
-                    onChange={(e) => setForm({ ...form, priority: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, priority: e.target.value })
+                    }
                   >
                     <option>Low</option>
                     <option>Medium</option>
@@ -334,7 +486,9 @@ export default function App() {
                   Assignee
                   <input
                     value={form.assignee}
-                    onChange={(e) => setForm({ ...form, assignee: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, assignee: e.target.value })
+                    }
                     placeholder="Name"
                   />
                 </label>
@@ -345,14 +499,18 @@ export default function App() {
                   <input
                     type="date"
                     value={form.dueDate}
-                    onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, dueDate: e.target.value })
+                    }
                   />
                 </label>
                 <label className="grow">
                   Status
                   <select
                     value={form.status}
-                    onChange={(e) => setForm({ ...form, status: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, status: e.target.value })
+                    }
                   >
                     {STATUSES.map((s) => (
                       <option key={s}>{s}</option>
