@@ -9,8 +9,13 @@
 }
 
 * { box-sizing: border-box; }
-body, #root { height: 100%; }
-body { margin: 0; background: var(--bg); color: var(--text); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; }
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+}
 
 .app { max-width: 1200px; margin: 0 auto; padding: 16px; }
 .app-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
@@ -27,41 +32,71 @@ button:hover { opacity: 0.9; }
 @media (max-width: 900px) { .board { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 600px) { .board { grid-template-columns: 1fr; } }
 
-.column { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; min-height: 200px; display:flex; flex-direction:column; }
-.column-header { padding: 10px 12px; border-bottom: 1px solid var(--border); font-weight: 700; color: #cbd5e1; }
-.column-body { padding: 10px; display: flex; flex-direction: column; gap: 10px; }
-
-.card {
-  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
-  padding: 10px; display:flex; flex-direction:column; gap: 8px;
+.column {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  min-height: 200px;
+  display:flex; flex-direction:column;
 }
+.column-header { padding: 10px 12px; border-bottom: 1px solid var(--border); font-weight: 700; color: #cbd5e1; }
+
+/* Make the droppable area taller and easier to hit */
+.column-body {
+  display:flex; flex-direction:column;
+  padding: 20px 10px 48px; /* generous drop padding */
+  min-height: 50vh;
+  overflow: visible; /* don't clip dragged item */
+}
+
+/* visual hint when dragging over */
+.column-body.is-over {
+  outline: 2px dashed rgba(255,255,255,0.25);
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+
+/* Card spacing: avoid 'gap' to keep placeholder math stable */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px;
+  display:flex; flex-direction:column; gap: 8px;
+  margin-bottom: 10px;
+  user-select: none;
+  transition: box-shadow 120ms ease, transform 120ms ease;
+}
+.column-body .card:last-child { margin-bottom: 0; }
+
+.card-title { font-weight: 700; }
+.meta { display:flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 12px; color: var(--muted); }
+.timer { margin-left: auto; font-variant-numeric: tabular-nums; opacity: 0.95; }
+.timer.paused { opacity: 0.7; filter: saturate(0.4); }
+
+/* Priority colors */
+.pill { padding: 2px 8px; border-radius: 999px; border:1px solid var(--border); }
+.pill.low    { background:#14532d; color:#bbf7d0; }
+.pill.medium { background:#78350f; color:#fde68a; }
+.pill.high   { background:#7f1d1d; color:#fecaca; }
+
+.assignee, .due { opacity: 0.9; }
+
 /* Grey out completed tasks */
 .card.done {
-  background: #374151; /* dark grey */
+  background: #374151;
   border-color: #4b5563;
   opacity: 0.6;
 }
 
-.card-title { font-weight: 700; }
-.meta { display:flex; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
-.pill { padding: 2px 8px; border-radius: 999px; border:1px solid var(--border); }
-/* Priority colors */
-.pill.low {
-  background: #14532d; /* dark green */
-  color: #bbf7d0; /* light green text */
-}
-.pill.medium {
-  background: #78350f; /* dark yellow/brown */
-  color: #fde68a; /* light yellow text */
-}
-.pill.high {
-  background: #7f1d1d; /* dark red */
-  color: #fecaca; /* light red text */
+/* Keep dragged card visible and on top */
+.card.dragging {
+  opacity: 1 !important;
+  z-index: 9999;
+  transform: translateZ(0);
 }
 
-.assignee, .due { opacity: 0.9; }
-.desc { color:#cbd5e1; font-size: 14px; }
-
+/* Modal */
 .modal-backdrop {
   position: fixed; inset: 0; background: rgba(0,0,0,0.5);
   display: grid; place-items: center;
