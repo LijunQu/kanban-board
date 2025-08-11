@@ -50,9 +50,11 @@ Now I have:
 ![](./addTask.png)
 ![](./editTask.png)
 
-## Step 3: Draging and Moving (40 min)
 
-Interactive Features
+## Step 3: Draging and Moving (50 min)
+
+
+Features
 ---------------------
 
 Drag & Drop: Reorder within a column and move tasks between To Do / Doing / Review / Done via `@hello-pangea/dnd`. Status updates on drop. I tried to make the dragging process as smooth as possible.
@@ -75,11 +77,72 @@ To emphasize accomplishment, moving a card into **Done** triggers a brief celebr
 Notes
 -------
 
-Some browsers mute audio until the first user interaction. If you don’t hear the coin, click/drag once and try again.
-
 Dependencies are installed with `npm install` (includes `@hello-pangea/dnd` and `canvas-confetti`).
 
 Now I have:
 
 ![](./step3.png)
 ![](./doneTask.png)
+
+
+## Step 4: Sorting Tasks (20 min)
+
+
+Features
+---------
+
+Per-Column Sorting: Each Kanban column (To Do / Doing / Review / Done) can be sorted independently without affecting the others.
+
+Sorting Criteria: Sort tasks within a column by:
+
+Alphabetical — Task title A→Z or Z→A.
+
+Due Date — Soonest or latest first.
+
+Priority — High → Medium → Low, or reverse.
+
+Assignee — Sort by assignee name alphabetically.
+
+Time Spent — Sort by accumulated timer value (longest or shortest).
+
+Always Draggable: Tasks remain draggable even while sorted, so you can reposition any card manually anytime.
+
+Quick Switching: You can sort one column by due date and another by timer at the same time, allowing you to optimize each workflow stage differently.
+
+Design Choices
+----------------
+
+I wanted to give users maximum flexibility in organizing tasks, since different workflow stages often require different priorities. For example, Done might be best sorted by due date for reporting, while Review might benefit from sorting by time spent.
+
+By keeping sorting independent per column and allowing drag at all times, the board never locks you into a single rigid view — you can blend structured sorting with freeform reordering for the most efficient task management.
+
+Notes
+---------
+Sorting controls are built into each column header for quick access. Sorting is instant and lightweight, with no effect on other columns.
+
+
+Now the kanban board looks like this:
+
+![](./step4.png)
+
+
+## Step 5: Search & Subtasks (20 min)
+
+
+Features
+----------
+
+Global Search: A search box in the header filters tasks in all columns in real time. Matches are case-insensitive and include task title, description, assignee, and all subtask titles. This makes it easy to instantly find relevant items without scrolling or guessing which column it’s in.
+
+Subtasks (Checklist): Each task can have a checklist of smaller subtasks. Add or edit subtasks in the task modal, reorder them, and toggle completion directly from the card without opening it. Each card shows a progress chip (done/total) so you can track progress at a glance.
+
+Design Choices
+---------------
+
+The global search ensures that even large, multi-column boards remain manageable—users can find what they need without losing focus or manually scanning columns. By searching across all major fields (including subtasks), we reduce friction and improve retrieval time.
+
+The subtask checklist supports breaking down large goals into smaller actionable steps. Visible progress chips help sustain motivation, while inline toggles make it quick to update progress. Subtasks do not leave their parent’s card, keeping related work visually grouped.
+
+Now my kanban board become:
+![](./subtask.png)
+![](./search.png)

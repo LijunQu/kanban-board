@@ -32,6 +32,20 @@ button:hover { opacity: 0.9; }
 @media (max-width: 900px) { .board { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 600px) { .board { grid-template-columns: 1fr; } }
 
+/* Make date picker icon brighter */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: brightness(1.8);
+  cursor: pointer;
+}
+
+input[type="date"]::-webkit-inner-spin-button {
+  display: none;
+}
+
+input[type="date"] {
+  color-scheme: dark; /* makes icon visible on dark backgrounds */
+}
+
 .column {
   background: var(--panel);
   border: 1px solid var(--border);
@@ -39,7 +53,33 @@ button:hover { opacity: 0.9; }
   min-height: 200px;
   display:flex; flex-direction:column;
 }
-.column-header { padding: 10px 12px; border-bottom: 1px solid var(--border); font-weight: 700; color: #cbd5e1; }
+.column-header {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 700;
+  color: #cbd5e1;
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+.column-controls {
+  display: flex; align-items: center; gap: 6px;
+}
+
+.column-controls select {
+  margin-left: 6px;
+  background: #0b1220;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.column-controls .tiny {
+  padding: 4px 8px;
+  font-size: 12px;
+  line-height: 1;
+}
 
 /* Make the droppable area taller and easier to hit */
 .column-body {
@@ -139,4 +179,56 @@ button:hover { opacity: 0.9; }
 
 .spacer {
   flex: 1;
+}
+
+/* Search box */
+.search {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  width: min(420px, 50vw);
+}
+.search input {
+  width: 100%;
+  background: #0b1220;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+}
+.tiny {
+  padding: 4px 8px;
+  font-size: 12px;
+  line-height: 1;
+}
+
+/* Subtasks inline checklist on card */
+.subtasks { margin-top: 6px; display: flex; flex-direction: column; gap: 6px; }
+.subtask { display: flex; align-items: center; gap: 8px; color: #cbd5e1; font-size: 14px; }
+.subtask input { transform: scale(1.1); }
+.subtask.checked span { text-decoration: line-through; opacity: 0.8; }
+
+/* Subtasks editor in modal */
+.subtasks-editor { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
+.subtasks-title-row { display: flex; justify-content: space-between; align-items: center; }
+.subtasks-empty { color: var(--muted); font-size: 13px; }
+.subtask-edit-row { display: flex; gap: 6px; }
+.subtask-edit-row input {
+  flex: 1;
+  background: #0b1220;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+/* Little chip showing subtask progress on title line */
+.subtask-chip {
+  margin-left: 8px;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: #93c5fd;
+  background: #0b1220;
 }
