@@ -146,3 +146,87 @@ The subtask checklist supports breaking down large goals into smaller actionable
 Now my kanban board become:
 ![](./subtask.png)
 ![](./search.png)
+
+
+## Step 6: Theme & Personalization (Key Feature) (20 min)
+
+
+Features
+-----------
+
+Custom Colors – Users can choose colors for the board background, panels, cards, text, and accent highlights. Each column header can have its own color for easy stage recognition.
+
+Background Image Upload – Users can upload any image (favorite characters, landscapes, etc.) to serve as the Kanban board’s background, with an adjustable opacity slider for perfect blending.
+
+Live Preview & Persistence – All changes are applied instantly and saved to localStorage, so the custom look is restored every time the board is opened.
+
+Per-Column Header Colors – Set individual colors for each column header (To Do, Doing, Review, Done) to improve visual grouping.
+
+Design Choices
+---------------
+
+I want my Kanban board to be something I enjoy looking at daily—to feel motivated when managing tasks. Being able to add my favorite anime/game characters or meaningful pictures makes the board personal and uplifting.
+
+People have different tastes, so I gave users complete control over the layout colors and background. This way, the board isn’t just a productivity tool—it’s a space they feel connected to, increasing engagement and encouraging them to come back, organize, and complete tasks.
+
+This is one example:
+![](./customizeBoard.png)
+![](./customized.png)
+
+
+## Step 7: Metadata Filtering (10 min)
+
+
+Features
+---------------------
+
+Filter Bar – Located above the board, the filter bar allows users to narrow tasks across all columns based on specific metadata:
+
+Due Date – Show only tasks due after (or before) a selected date.
+
+Priority – Filter by Low / Medium / High.
+
+Assignee – Select one or more people from existing task assignees.
+
+Time Spent – Optionally filter by tasks with elapsed time greater or less than a given threshold.
+
+Combined Filters – Multiple filters can be active at the same time (e.g., High priority tasks assigned to Alex that are due after 2025-09-01).
+
+Instant Updates – Filters apply in real time without page reload, and work in combination with the global search feature.
+
+Design Choices
+---------------
+
+While the global search feature allows broad keyword matching, metadata filtering provides structured, precise control. This helps users quickly focus on the most relevant tasks when managing large boards, especially in high-volume workflows (1,000+ tasks).
+
+By making filters global (not per-column), users can easily find items regardless of their workflow stage. Filters also combine with search for both broad and targeted querying, giving users flexibility without cluttering the UI.
+
+Now I have:
+![](./filter.png)
+
+
+## Step 8: Calendar View Integration (20 min)
+
+
+Features
+-----------
+
+📅 Calendar View – A dedicated modal view that displays all tasks by their due date on a monthly calendar.
+
+Tasks appear in their assigned date slot, with color-coded priority labels (Low / Medium / High).
+
+Clicking on a task in the calendar opens the edit form, allowing quick updates without leaving the calendar view.
+
+Works with subtasks, timers, and drag-and-drop updates — changes are instantly reflected in both the board and calendar.
+
+Seamless Toggle – The calendar is accessible at any time via the 📅 Calendar button in the top toolbar. The board remains exactly as it was when you return.
+
+Design Choices
+----------------
+I wanted users to have both a workflow-oriented view (Kanban board) and a time-oriented view (calendar).
+The calendar provides an at-a-glance understanding of upcoming work and deadlines, making it easier to plan, avoid bottlenecks, and distribute tasks evenly over time.
+
+By keeping the calendar in a modal, users can quickly reference or adjust deadlines without losing the context of their current board.
+
+This is the calendar page:
+![](./calendar.png)
