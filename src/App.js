@@ -19,6 +19,8 @@ import { createPortal } from "react-dom";
 import "./App.css";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import confetti from "canvas-confetti";
+import { fetchTasks, createTask, updateTask, deleteTask } from "./mockApi";
+
 
 // ----- Columns -----
 const STATUSES = ["To Do", "Doing", "Review", "Done"];
@@ -187,10 +189,38 @@ function buildMonthMatrix(year, month /* 0-11 */) {
   return weeks;
 }
 
+
+function toColumns(tasks) {
+  const cols = {};
+  STATUSES.forEach((s) => (cols[s] = []));
+  for (const t of tasks) {
+    const s = STATUSES.includes(t.status) ? t.status : "To Do";
+    cols[s].push(t);
+  }
+  return cols;
+}
+
+
 export default function App() {
   // ----- Board State -----
   const [columns, setColumns] = useState(makeInitialColumns());
   const [colSort, setColSort] = useState(defaultSortForAll()); // per-column sort {key, dir}
+
+  // --- Mock API controls (on-demand) ---
+  const [mockCount, setMockCount] = useState(1000);
+  const [mockLoading, setMockLoading] = useState(false);
+  async function loadMockTasks() {
+    setMockLoading(true);
+    try {
+      const tasks = await fetchTasks({ count: mockCount, minDelay: 250, maxDelay: 1200 });
+      setColumns(toColumns(tasks));
+    } catch (e) {
+      console.error("Mock fetch failed:", e);
+    } finally {
+      setMockLoading(false);
+    }
+  }
+
 
   // Search box (global)
   const [query, setQuery] = useState("");
@@ -256,26 +286,39 @@ export default function App() {
   // ----- Audio + Confetti -----
   const audioCtxRef = useRef(null);
   const [soundReady, setSoundReady] = useState(false);
+  const [soundOn, setSoundOn] = useState(false);
 
-  useEffect(() => {
-    // Create AudioContext once; many browsers require a user gesture to "unlock" it
+const toggleSound = () => {
+  let ctx = audioCtxRef.current;
+
+  // Lazily create the context on first user click
+  if (!ctx) {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
     try {
-      const Ctx = window.AudioContext || window.webkitAudioContext;
-      audioCtxRef.current = new Ctx();
-    } catch {}
-  }, []);
+      ctx = new Ctx();
+      audioCtxRef.current = ctx;
+    } catch {
+      return; // creation failed; do nothing
+    }
+  }
 
-  const enableSound = () => {
-    const ctx = audioCtxRef.current;
-    if (!ctx) return;
+  if (soundOn) {
+    // Turn OFF sound
+    ctx.suspend?.();
+    setSoundOn(false);
+  } else {
+    // Turn ON sound
     ctx.resume?.();
+    setSoundOn(true);
     setSoundReady(true);
-  };
+  }
+};
 
   // Simple retro "coin" sound (Web Audio API) - avoids shipping sound files
   const playCoin = () => {
+    if (!soundOn) return; 
     const ctx = audioCtxRef.current;
-    if (!ctx || ctx.state === "suspended") return; // ensure user unlocked sound
+    if (!ctx || ctx.state === "suspended") return;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = "square";
@@ -553,11 +596,24 @@ export default function App() {
 
         {/* Header actions (kept as-is; just added a Calendar button) */}
         <div style={{ display: "flex", gap: 8 }}>
+          {/* Mock controls */}
+          <input
+            type="number"
+            min="1"
+            value={mockCount}
+            onChange={(e) => setMockCount(Math.max(1, Number(e.target.value) || 0))}
+            style={{ width: 90 }}
+            title="Number of mock tasks"
+          />
+          <button onClick={loadMockTasks} disabled={mockLoading} title="Load mock tasks">
+            {mockLoading ? "Loading…" : `Load Mock (${mockCount})`}
+          </button>
           <button onClick={() => setShowCalendar(true)} title="Open calendar">📅 Calendar</button>
           <button onClick={() => setShowTheme(true)}>🎨 Theme</button>
-          <button onClick={enableSound} title="Enable sound">
-            {soundReady ? "🔊 Sound on" : "🔇 Enable sound"}
+          <button onClick={toggleSound} title={soundOn ? "Disable sound" : "Enable sound"}>
+            {soundOn ? "🔊 Sound on" : "🔇 Enable sound"}
           </button>
+
           <button onClick={() => setShowCalendar(true)}>📅 Calendar</button>
           <button className="primary" onClick={openAddForm}>
             Add Task

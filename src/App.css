@@ -272,6 +272,12 @@ input[type="date"] {
   margin-bottom: 8px;
 }
 
+/* --- FIX: make calendar scroll inside the modal --- */
+.modal {
+  max-height: 90vh; 
+  overflow: auto;        
+}
+
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
