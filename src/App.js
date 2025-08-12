@@ -14,12 +14,12 @@
 // - NEW: Calendar View (month grid of tasks by due date)
 // -------------------------------------------------------------
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useDeferredValue, memo } from "react";
 import { createPortal } from "react-dom";
 import "./App.css";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import confetti from "canvas-confetti";
-import { fetchTasks, createTask, updateTask, deleteTask } from "./mockApi";
+import { fetchTasks} from "./mockApi";
 
 
 // ----- Columns -----
@@ -200,6 +200,23 @@ function toColumns(tasks) {
   return cols;
 }
 
+const TaskTimer = memo(function TaskTimer({ elapsedMs, isRunning, startedAt, fmt }) {
+  // Only re-render this small component once/sec while running
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!isRunning) return;
+    const id = setInterval(() => setTick(t => (t + 1) & 1023), 1000);
+    return () => clearInterval(id);
+  }, [isRunning]);
+
+  const ms = (elapsedMs || 0) + (isRunning && startedAt ? Date.now() - startedAt : 0);
+  return (
+    <span className={`timer ${isRunning ? "" : "paused"}`}>
+      ⏱ {fmt(ms)}
+    </span>
+  );
+});
+
 
 export default function App() {
   // ----- Board State -----
@@ -224,6 +241,9 @@ export default function App() {
 
   // Search box (global)
   const [query, setQuery] = useState("");
+
+  const deferredQuery = useDeferredValue(query);
+
 
   // Metadata filter state
   const [filters, setFilters] = useState({
@@ -260,13 +280,7 @@ export default function App() {
     subtasks: [],
   });
 
-  // ----- Timers -----
-  // One global tick to update live timers and "elapsed" sort every second
-  const [, setNow] = useState(Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
+
 
   // Timer helpers (accumulate elapsedMs, manage startedAt/isRunning)
   const stopTimer = (t) => {
@@ -574,6 +588,23 @@ const toggleSound = () => {
     return true;
   };
 
+
+  const listsByCol = useMemo(() => {
+  const out = {};
+  for (const col of STATUSES) {
+    const { key, dir } = colSort[col];
+    const comparator = makeComparator(key, dir);
+
+    const base = columns[col]
+      .filter((t) => matchesQuery(t, deferredQuery))
+      .filter((t) => matchesFilters(t));
+
+    out[col] = key === "manual" ? base : [...base].sort(comparator);
+  }
+  return out;
+}, [columns, colSort, deferredQuery, filters]);
+
+
   // ----- Render -----
   return (
     <div className="app">
@@ -707,15 +738,7 @@ const toggleSound = () => {
         <div className="board">
           {STATUSES.map((col) => {
             const { key, dir } = colSort[col];
-            const comparator = makeComparator(key, dir);
-
-            // Apply search + metadata filters BEFORE sorting and rendering.
-            const baseList = columns[col]
-              .filter((t) => matchesQuery(t, query))
-              .filter((t) => matchesFilters(t));
-
-            const list = key === "manual" ? baseList : [...baseList].sort(comparator);
-
+            const list = listsByCol[col];
             return (
               <section className="column" key={col}>
                 {/* Column header with per-column sort controls AND optional header color */}
@@ -793,13 +816,13 @@ const toggleSound = () => {
                                   </span>
                                   {t.assignee && <span className="assignee">{t.assignee}</span>}
                                   {t.dueDate && <span className="due">Due {t.dueDate}</span>}
-                                  <span className={`timer ${t.isRunning ? "" : "paused"}`}>
-                                    ⏱{" "}
-                                    {fmt(
-                                      (t.elapsedMs || 0) +
-                                        (t.isRunning && t.startedAt ? Date.now() - t.startedAt : 0)
-                                    )}
-                                  </span>
+                                  <TaskTimer
+                                    elapsedMs={t.elapsedMs}
+                                    isRunning={t.isRunning}
+                                    startedAt={t.startedAt}
+                                    fmt={fmt}
+                                  />
+
                                 </div>
 
                                 {t.description && <div className="desc">{t.description}</div>}

@@ -230,3 +230,49 @@ By keeping the calendar in a modal, users can quickly reference or adjust deadli
 
 This is the calendar page:
 ![](./calendar.png)
+
+
+## Step 9: Performance & Scalability (40 min)
+
+
+Features
+-----------
+
+Mock Loader (Opt-in): A “Load Mock” button (with a count input) lets you populate N tasks (≥1,000) on demand. No auto-fetch on mount, so normal usage stays snappy until you choose to stress test.
+
+Realistic Mock Backend: The mock API simulates network latency and occasional failures to exercise optimistic UI paths without touching real data.
+
+Per-Card Timer Updates: Removed the global 1-second app tick. Only cards that are actively running re-render once per second, dramatically reducing render pressure with large boards.
+
+Memoized Lists per Column: Filtering + sorting is computed once per column via useMemo, not on every render inside JSX.
+
+Deferred Search: Typing in the global search uses useDeferredValue to avoid re-filtering thousands of tasks on each keystroke.
+
+Drag & Drop Unchanged: All tasks remain draggable even while sorted or filtered.
+
+Quality-of-Life Fixes:
+
+Calendar scroll inside the modal so big months don’t overflow the viewport.
+
+Sound toggle truly enables/disables audio (no sound before enabling, and you can turn it off).
+
+Design Choices
+----------------
+The main bottlenecks at 1,000+ tasks were:
+
+a global 1s re-render for the entire app (timers), and
+
+per-render filter/sort work done inline during render.
+
+We tackled both by isolating time-based updates to the smallest possible component (only running cards tick) and by memoizing heavy list transforms once per render. The mock loader is opt-in to keep everyday usage light while still making scalability testing trivial.
+
+Notes
+------------
+Use the header controls to enter a count (e.g., 1500) and click Load Mock to populate tasks.
+
+Sorting and filtering remain independent per column and work with large lists thanks to memoization.
+
+If you still feel strain on very old machines, you can temporarily reduce visual effects while dragging (lighter shadows) or cap visible items per column during testing.
+
+Mock Page:
+![](./mock.png)
